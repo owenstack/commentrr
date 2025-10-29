@@ -1,8 +1,8 @@
-import { trpcServer } from "@hono/trpc-server";
+import { RPCHandler } from "@orpc/server/fetch";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { appRouter } from "../trpc/router";
-import { createContext } from "../trpc/utils";
+import { appRouter } from "../orpc/router";
+import { createContext } from "../orpc/utils";
 import { auth } from "./handlers/auth";
 import { CORS_ORIGINS } from "./handlers/constants";
 
@@ -13,6 +13,8 @@ const app = new Hono<{
 		session: typeof auth.$Infer.Session.session | null;
 	};
 }>();
+
+const handler = new RPCHandler(appRouter);
 
 app.use(
 	"*",
@@ -38,17 +40,18 @@ app.use("*", async (c, next) => {
 	return next();
 });
 
+app.use("/api/rpc/*", async (c, next) => {
+	const context = await createContext({ headers: c.req.raw.headers });
+	const { matched, response } = await handler.handle(c.req.raw, {
+		prefix: "/api/rpc",
+		context,
+	});
+	if (matched) return c.newResponse(response.body, response);
+	await next();
+});
+
 app.on(["POST", "GET"], "/api/auth/*", (c) => {
 	return auth.handler(c.req.raw);
 });
-
-app.use(
-	"/api/trpc/*",
-	trpcServer({
-		router: appRouter,
-		endpoint: "/api/trpc",
-		createContext: (c) => createContext({ headers: c.req.headers }),
-	}),
-);
 
 export default app;

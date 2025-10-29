@@ -1,4 +1,4 @@
-import { TRPCClientError } from "@trpc/client";
+import { ORPCError } from "@orpc/client";
 import {
 	Building,
 	CheckCheck,
@@ -12,13 +12,16 @@ export const handleLoader = async <T>(loader: () => Promise<T>) => {
 	try {
 		return await loader();
 	} catch (error) {
-		if (error instanceof TRPCClientError) {
-			if (error.data?.code === "UNAUTHORIZED") {
+		if (error instanceof ORPCError) {
+			if (error.code === "UNAUTHORIZED") {
 				throw redirect("/login");
 			}
+			throw error;
 		}
-		console.error("Error loading data:", error);
-		return null;
+		throw new ORPCError("INTERNAL_SERVER_ERROR", {
+			message:
+				error instanceof Error ? error.message : "An unexpected error occurred",
+		});
 	}
 };
 

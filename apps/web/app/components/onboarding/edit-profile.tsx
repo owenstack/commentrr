@@ -2,16 +2,12 @@ import { useMutation } from "@tanstack/react-query";
 import { Loader } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { z } from "zod";
-import { updateUser, useSession } from "~/lib/auth";
-import { useTRPC } from "~/lib/trpc";
+import { useSession } from "~/lib/auth";
+import { orpc } from "~/lib/orpc";
 import AvatarUpload from "../file-upload/avatar-upload";
 import { Button } from "../ui/button";
-import { useMounted } from "~/hooks/use-mounted";
-import { Skeleton } from "../ui/skeleton";
 
 export function OnboardingEditProfile() {
-	const { data } = useSession();
 	return (
 		<div className="flex flex-col gap-4">
 			<h3>Update your profile as you see fit</h3>
@@ -23,63 +19,26 @@ export function OnboardingEditProfile() {
 }
 
 function UserAvatarUpload() {
-	const mounted = useMounted();
-	if (!mounted) {
-		return <Skeleton className="size-32 rounded-full" />;
-	}
-	return <UserAvatarUploadClient />;
-}
-
-function UserAvatarUploadClient() {
 	const { data, refetch } = useSession();
-	const trpc = useTRPC();
-	const [newImage, setNewImage] = useState<File>();
-	const { mutateAsync: uploadAvatar, isPending: isUploading } = useMutation(
-		trpc.user.updateUserImage.mutationOptions(),
-	);
-	const { mutateAsync: createPresignedUrl } = useMutation(
-		trpc.miscellaneous.createPresignedUrl.mutationOptions(),
+	const [image, setImage] = useState<File>();
+	const { mutateAsync, isPending } = useMutation(
+		orpc.user.uploadUserImage.mutationOptions(),
 	);
 	const handleUpload = async () => {
-		if (!newImage) {
+		if (!image) {
 			toast.error("No image selected");
 			return;
 		}
-		const promise = async () => {
-			const presignedUrl = await createPresignedUrl({
-				relationId: data?.user.id ?? "",
-				fileName: newImage.name,
-				fileType: newImage.type,
-			});
-			if (presignedUrl.error) {
-				toast.error(presignedUrl.error);
-				return;
-			}
-			const { url, key } = presignedUrl;
-			if (!url || !key) {
-				toast.error("Failed to get presigned URL");
-				return;
-			}
-			await fetch(url, {
-				method: "PUT",
-				body: newImage,
-				headers: {
-					"Content-Type": newImage.type,
-				},
-			});
-
-			await uploadAvatar({
-				key,
-				name: newImage.name,
-				type: "image",
-			});
-		};
-		toast.promise(promise(), {
+		toast.promise(mutateAsync({ image }), {
 			loading: `Uploading new avatar...`,
-			success: () => {
+			success: (res) => {
+				if (res.error) {
+					toast.error(res.error);
+					return;
+				}
 				refetch();
-				setNewImage(undefined);
-				return "Profile image updated successfully";
+				setImage(undefined);
+				return res.message;
 			},
 			error: (err) => (err instanceof Error ? err.message : "Unknown error"),
 		});
@@ -91,12 +50,12 @@ function UserAvatarUploadClient() {
 				defaultAvatar={data?.user.image ?? ""}
 				onFileChange={(file) => {
 					const image = file?.file as File;
-					setNewImage(image);
+					setImage(image);
 				}}
 			/>
-			{newImage && (
-				<Button onClick={handleUpload} disabled={isUploading} type="button">
-					{isUploading ? <Loader className="mr-2 size-4 animate-spin" /> : null}
+			{image && (
+				<Button onClick={handleUpload} disabled={isPending}>
+					{isPending ? <Loader className="mr-2 size-4 animate-spin" /> : null}
 					Upload
 				</Button>
 			)}

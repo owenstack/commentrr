@@ -16,7 +16,7 @@ import {
 	ThemeProvider,
 	useTheme,
 } from "remix-themes";
-import { TRPCReactProvider } from "./lib/trpc";
+import { Provider } from "./lib/orpc";
 import { themeSessionResolver } from "./sessions.server";
 
 export const links: Route.LinksFunction = () => {
@@ -39,11 +39,11 @@ export async function loader({ request }: Route.LoaderArgs) {
 export default function AppWithProviders({ loaderData }: Route.ComponentProps) {
 	const { theme } = loaderData;
 	return (
-		<TRPCReactProvider>
+		<Provider>
 			<ThemeProvider specifiedTheme={theme} themeAction="/api/set-theme">
 				<App />
 			</ThemeProvider>
-		</TRPCReactProvider>
+		</Provider>
 	);
 }
 

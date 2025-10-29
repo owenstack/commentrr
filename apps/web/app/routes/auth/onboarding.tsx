@@ -13,14 +13,13 @@ import {
 	StepperTrigger,
 } from "~/components/ui/stepper";
 import { handleLoader, steps } from "~/lib/constants";
+import { client } from "~/lib/orpc";
 import { useStepStore } from "~/lib/store";
-import { caller } from "~/lib/trpc";
 import type { Route } from "./+types/onboarding";
 
-export const loader = (args: Route.LoaderArgs) =>
+export const loader = () =>
 	handleLoader(async () => {
-		const api = caller(args);
-		const user = await api.user.getUser.query();
+		const user = await client.user.getUser();
 		return { name: user.name };
 	});
 
@@ -32,7 +31,7 @@ export default function Page({ loaderData }: Route.ComponentProps) {
 			<div className="max-w-4xl w-full space-y-12">
 				<div className="text-center space-y-3">
 					<h1 className="text-3xl font-bold tracking-tight text-foreground">
-						Welcome{loaderData?.name ? `, ${loaderData.name}` : ""}!
+						Welcome{loaderData.name ? `, ${loaderData.name}` : ""}!
 					</h1>
 					<p className="text-lg text-muted-foreground max-w-2xl mx-auto">
 						Set up your account to get the best experience from our application.
