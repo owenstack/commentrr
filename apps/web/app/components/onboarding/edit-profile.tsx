@@ -7,6 +7,8 @@ import { updateUser, useSession } from "~/lib/auth";
 import { useTRPC } from "~/lib/trpc";
 import AvatarUpload from "../file-upload/avatar-upload";
 import { Button } from "../ui/button";
+import { useMounted } from "~/hooks/use-mounted";
+import { Skeleton } from "../ui/skeleton";
 
 export function OnboardingEditProfile() {
 	const { data } = useSession();
@@ -21,6 +23,14 @@ export function OnboardingEditProfile() {
 }
 
 function UserAvatarUpload() {
+	const mounted = useMounted();
+	if (!mounted) {
+		return <Skeleton className="size-32 rounded-full" />;
+	}
+	return <UserAvatarUploadClient />;
+}
+
+function UserAvatarUploadClient() {
 	const { data, refetch } = useSession();
 	const trpc = useTRPC();
 	const [newImage, setNewImage] = useState<File>();
